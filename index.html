@@ -88,60 +88,30 @@ button.danger { background:#ff6b6b; color:#111; }
     font-size:14px;
 }
 
-.container {
-    width: 100%;
-    margin:100px auto 20px;
-    overflow:auto;
-    transform-origin: top left;
-}
-table {
-    width:100%;
-    border-collapse: collapse;
-    background: rgba(255,255,255,0.03);
-    border-radius:10px;
-    overflow:hidden;
-    table-layout:auto;
-}
-th, td {
-    padding:6px 8px;
-    border-bottom:1px solid rgba(255,255,255,0.1);
-    text-align:center;
-    vertical-align:middle;
-    font-size:16px;
-}
-th {
-    background: rgba(0,230,255,0.1);
-    color:#00eaff;
-}
+.container { width: 100%; margin:100px auto 20px; overflow:auto; transform-origin: top left; }
+table { width:100%; border-collapse: collapse; background: rgba(255,255,255,0.03); border-radius:10px; overflow:hidden; table-layout:auto; }
+th, td { padding:6px 8px; border-bottom:1px solid rgba(255,255,255,0.1); text-align:center; vertical-align:middle; font-size:16px; }
+th { background: rgba(0,230,255,0.1); color:#00eaff; }
+
+/* White block for school name */
 .school-cell {
-    max-width: 200px;
-    min-width: 120px;
+    max-width: 300px;
+    min-width: 180px;
     word-wrap: break-word;
     white-space: normal;
-    font-weight:600;
-}
-input.school-input {
-    width: 100%;
-    box-sizing: border-box;
-    padding:4px 6px;
-    font-size:14px;
-    border-radius:4px;
-    border:none;
+    font-weight:700;
+    background: rgba(255,255,255,0.9);
+    color:#000;
+    border-radius:6px;
+    padding:6px 10px;
+    margin:2px auto;
+    display:inline-block;
 }
 
-.total {
-    font-weight:800;
-    font-size:20px;
-}
+.total { font-weight:800; font-size:20px; }
 
-.projector-mode {
-    background:#000810;
-    transform-origin: top left;
-}
-.projector-mode table th, .projector-mode table td {
-    font-size:18px;
-    padding:8px 10px;
-}
+.projector-mode { background:#000810; transform-origin: top left; }
+.projector-mode table th, .projector-mode table td { font-size:18px; padding:8px 10px; }
 
 .gold { animation: glowGold 1.5s infinite alternate; }
 .silver { animation: glowSilver 1.5s infinite alternate; }
@@ -179,11 +149,10 @@ input.school-input {
 
 <h1>🏆 LIVE SCOREBOARD 🏆</h1>
 
+<!-- Controls Menu -->
 <div class="controls">
   <button class="primary" onclick="toggleControls()">☰ Menu</button>
   <div id="controlMenu">
-    <button class="primary" onclick="menuAction(promptAddSchool)">➕ Add School</button>
-    <button class="muted" onclick="menuAction(clearAll)">Reset</button>
     <button class="primary" onclick="menuAction(downloadExcel)">Download Excel</button>
     <button class="muted" onclick="menuAction(downloadPDF)">Download PDF</button>
     <button class="primary" onclick="menuAction(toggleProjector)">Projector Mode</button>
@@ -211,7 +180,10 @@ input.school-input {
 <tbody></tbody>
 </table>
 </div>
-
+<div style="text-align:center; margin:20px 0;">
+      <img src="" alt="Banner" style="max-width:400px; width:100%; height:auto; border-radius:8px; box-shadow:0 0 20px rgba(0,0,0,0.5);">
+  </a>
+</div>
 <div id="winnerPopup" style="display:none;"></div>
 
 <script>
@@ -233,7 +205,7 @@ function loadFromFirebase(){
     });
 }
 
-// Add school row (read-only scores)
+// Add school row
 function addSchoolRow(name="", scores=[], id=null){
     const tbody = document.querySelector("#scoreTable tbody");
     const tr = document.createElement("tr");
@@ -242,36 +214,11 @@ function addSchoolRow(name="", scores=[], id=null){
 
     const scoreTds = scores.map(s=>`<td>${s}</td>`).join('');
     const total = scores.reduce((a,b)=>a+b,0);
-    tr.innerHTML = `
-        <td class="school-cell">
-            <input type="text" class="school-input" placeholder="School Name" value="${name}" 
-            onblur="updateSchoolName(this)">
-        </td>
-        ${scoreTds}
-        <td class="total">${total}</td>`;
+    tr.innerHTML = `<td class="school-cell">${name}</td>${scoreTds}<td class="total">${total}</td>`;
     tbody.appendChild(tr);
 }
 
-// Prompt user to add a new school
-function promptAddSchool(){
-    const name = prompt("Enter school name:");
-    if(name && name.trim() !== ""){
-        const scores = Array(NUM).fill(0);
-        const newId = db.ref('scores').push().key;
-        db.ref('scores/' + newId).set({name:name.trim(), scores:scores});
-    }
-}
-
-// Update school name in Firebase
-function updateSchoolName(input){
-    const tr = input.closest('tr');
-    const id = tr.getAttribute('data-id');
-    const scores = Array.from(tr.querySelectorAll('td')).slice(1,NUM+1).map(td=>Number(td.textContent)||0);
-    const name = input.value.trim();
-    if(name) db.ref('scores/'+id).set({name, scores});
-}
-
-// Sort table & gold/silver/bronze
+// Sort table & apply gold/silver/bronze
 function sortAndHighlight(){
     const tbody = document.querySelector("#scoreTable tbody");
     const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -285,10 +232,9 @@ function sortAndHighlight(){
     });
 }
 
-// Menu
+// Menu functions
 function toggleControls(){ const menu=document.getElementById('controlMenu'); menu.style.display = (menu.style.display==='none')?'block':'none'; }
 function menuAction(fn){ fn(); document.getElementById('controlMenu').style.display='none'; }
-function clearAll(){ if(confirm("Clear all schools and scores?")){ document.querySelector("#scoreTable tbody").innerHTML=""; db.ref('scores').remove(); } }
 
 // Adjust table scale
 function adjustTableScale(){
@@ -353,9 +299,9 @@ function showWinner(){
     winners.forEach(r=>r.classList.add('highlight'));
     const popup = document.getElementById('winnerPopup');
     popup.style.display='block';
-    popup.innerHTML = winners.map(r=>r.querySelector('td input') ? r.querySelector('td input').value : r.querySelector('td').textContent).join('\n🏆\n');
+    popup.innerHTML = winners.map(r=>r.querySelector('td').textContent).join('\n🏆\n');
     popup.style.animation = 'popUp 0.6s forwards';
-    setTimeout(()=>{ popup.style.display='none'; },20000);
+    setTimeout(()=>{ popup.style.display='none'; },10000); // 10 seconds only
 }
 
 // Load Firebase initially
