@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Live Scoreboard - Dark Neon</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+body {
+    margin:0; padding:0;
+    font-family:'Poppins', sans-serif;
+    background: #0a0f1e;
+    color:white;
+    text-align:center;
+}
+h1 {
+    font-size:40px;
+    margin:20px 0;
+    text-shadow: 0 0 15px #00eaff,0 0 25px #00bfff;
+    animation: glowHeading 2s ease-in-out infinite alternate;
+}
+@keyframes glowHeading{
+  0%{ text-shadow:0 0 15px #00eaff,0 0 25px #00bfff; }
+  100%{ text-shadow:0 0 25px #ff00ff,0 0 50px #ff00ff; }
+}
+.controls { margin:10px 0; position: fixed; top:10px; left:10px; z-index:1000; }
+button {
+    margin:0 4px; padding:8px 14px;
+    border:none; border-radius:6px;
+    font-size:14px; cursor:pointer;
+    transition:.2s;
+}
+button.primary { background: #00eaff; color:#012; font-weight:600;}
+button.primary:hover { background:#00bfff; }
+button.muted { background: rgba(255,255,255,0.08); color:#fff;}
+button.muted:hover { background: rgba(255,255,255,0.15);}
+button.danger { background:#ff6b6b; color:#111; }
+.container { width:95%; margin:60px auto 20px; overflow-x:auto; }
+table { width:100%; border-collapse: collapse; background: rgba(255,255,255,0.03); border-radius:10px; overflow:hidden; margin-top:12px; table-layout:auto; }
+th,td { padding:10px; font-size:15px; border-bottom:1px solid rgba(255,255,255,0.1); text-align:center; vertical-align:middle; }
+th { background: rgba(0,230,255,0.1); color:#00eaff; }
+
+/* UPDATED — Wider school name box */
+.school-cell {
+    max-width: 550px;   /* increased */
+    min-width: 330px;   /* increased */
+    word-wrap: break-word; 
+    white-space: normal; 
+    position: relative; 
+}
+input[type="text"], input[type="number"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    font-size: 16px;
+    border-radius: 8px;  
+    border: none;
+    background: rgba(255,255,255,0.9);
+    color: #000;
+}
+input[type="text"]{
+    min-width: 300px;   /* increased */
+}
+input[type="number"]{ width:60px; }
+
+.rank-cell{ font-weight:700; color:#000; background: rgba(255,255,255,0.6); border-radius:6px; padding:2px 4px; }
+.total{ font-weight:700; transition:.3s; }
+.gold{background:#ffd700; color:#111;}
+.silver{background:#c0c0c0; color:#111;}
+.bronze{background:#cd7f32; color:#111;}
+
+.highlight{animation:glow 1.5s ease-out;}
+@keyframes glow{ 0%{background:#22d3ee;} 100%{background:transparent;} }
+
+.remove-btn{ background:#ff6b6b;color:#111;font-weight:bold; padding:4px 8px;margin-left:4px;border-radius:6px; font-size:12px; cursor:pointer; }
+
+.projector-mode { background:#000810; }
+.projector-mode table th, .projector-mode table td { font-size:22px; padding:18px; }
+.projector-mode h1{ font-size:48px; }
+
+/* Winner Popup */
+#winnerPopup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    background: linear-gradient(90deg,#00eaff,#ff00ff,#00ff00);
+    color: #000;
+    padding: 30px 50px;
+    font-size: 40px;
+    font-weight: 800;
+    border-radius: 20px;
+    box-shadow: 0 0 30px #00eaff, 0 0 50px #ff00ff, 0 0 70px #00ff00;
+    text-align: center;
+    z-index: 9999;
+    text-transform: uppercase;
+    white-space: pre-line;
+    animation: popUp 0.6s forwards;
+}
+@keyframes popUp {
+    0% { transform: translate(-50%, -50%) scale(0); opacity:0; }
+    50% { transform: translate(-50%, -50%) scale(1.2); opacity:1; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity:1; }
+}
+</style>
+</head>
+<body>
+
+<h1>🏆 LIVE SCOREBOARD 🏆</h1>
+
+<!-- Collapsible Control Menu -->
+<div class="controls">
+  <button class="primary" onclick="toggleControls()">☰ Menu</button>
+  <div id="controlMenu" style="display:none; margin-top:10px;">
+    <button class="primary" onclick="addSchool()">➕ Add School</button>
+    <button class="muted" onclick="clearAll()">Reset</button>
+    <button class="primary" onclick="downloadExcel()">Download Excel</button>
+    <button class="muted" onclick="downloadPDF()">Download PDF</button>
+    <button class="primary" onclick="toggleProjector()">Projector Mode</button>
+    <button class="primary" onclick="showWinner()">🏆 Winners</button>
+  </div>
+</div>
+
+<div class="container">
+<table id="scoreTable">
+<thead>
+<tr>
+<th>Rank</th>
+<th>School Name</th>
+<th>Activity 1</th>
+<th>Activity 2</th>
+<th>Activity 3</th>
+<th>Activity 4</th>
+<th>Activity 5</th>
+<th>Activity 6</th>
+<th>Activity 7</th>
+<th>Activity 8</th>
+<th>Activity 9</th>
+<th>Total Points</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+
+<!-- Winner Popup -->
+<div id="winnerPopup" style="display:none;"></div>
+
+<script>
+const NUM=9;
+let savedData = JSON.parse(localStorage.getItem('scoreboard')) || [];
+
+function saveToLocal(){
+    const trs = Array.from(document.querySelectorAll("#scoreTable tbody tr"));
+    const data = trs.map(tr => {
+        const school = tr.querySelector('input[type="text"]').value.trim();
+        const scores = Array.from(tr.querySelectorAll('input[type="number"]')).map(i=>Number(i.value)||0);
+        return {school, scores};
+    });
+    localStorage.setItem('scoreboard', JSON.stringify(data));
+}
+
+function toggleControls(){
+  const menu = document.getElementById('controlMenu');
+  menu.style.display = (menu.style.display==='none') ? 'block' : 'none';
+}
+
+function addSchool(name="", scoresArr){
+  const tbody=document.querySelector("#scoreTable tbody");
+  const tr=document.createElement("tr");
+  let scores = scoresArr || Array(NUM).fill(0);
+  tr.innerHTML=`
+    <td class="rank-cell">-</td>
+    <td class="school-cell">
+      <input type="text" placeholder="School Name" value="${escapeHtml(name)}" oninput="debouncedUpdate()">
+      <button class="remove-btn" onclick="removeSchool(this)">-</button>
+    </td>
+    ${scores.map(s=>`<td><input type="number" min="0" value="${s}" oninput="onScoreInput(this)"></td>`).join('')}
+    <td class="total">0</td>`;
+  tbody.appendChild(tr);
+  tr.classList.add('highlight');
+  setTimeout(()=>tr.classList.remove('highlight'),1000);
+  updateAll();
+  saveToLocal();
+}
+
+function removeSchool(btn){
+    if(confirm("Remove this school?")){
+        btn.closest('tr').remove();
+        saveToLocal();
+        updateAll();
+    }
+}
+
+function onScoreInput(el){
+  el.parentElement.classList.add('highlight');
+  setTimeout(()=>el.parentElement.classList.remove('highlight'),1200);
+  updateAll();
+  saveToLocal();
+}
+
+let debTimer=null;
+function debouncedUpdate(){ 
+    if(debTimer) clearTimeout(debTimer); 
+    debTimer=setTimeout(()=>{ updateAll(); saveToLocal(); },220);
+}
+
+function updateAll(){
+  const tbody=document.querySelector("#scoreTable tbody");
+  let rows=Array.from(tbody.querySelectorAll('tr'));
+  rows.forEach(row=>{
+    const nums=Array.from(row.querySelectorAll('input[type="number"]')).map(i=>Number(i.value)||0);
+    const total=nums.reduce((a,b)=>a+b,0);
+    const totalCell=row.querySelector('.total');
+    totalCell.style.transform='scale(1.18)';
+    setTimeout(()=>totalCell.style.transform='scale(1)',220);
+    totalCell.textContent=total;
+  });
+  rows.sort((a,b)=>Number(b.querySelector('.total').textContent)-Number(a.querySelector('.total').textContent));
+  rows.forEach((row,idx)=>{
+    row.querySelector('.rank-cell').textContent=idx+1;
+    row.classList.remove('gold','silver','bronze');
+    const tval=Number(row.querySelector('.total').textContent);
+    if(idx===0 && tval>0) row.classList.add('gold');
+    else if(idx===1 && tval>0) row.classList.add('silver');
+    else if(idx===2 && tval>0) row.classList.add('bronze');
+  });
+}
+
+function escapeHtml(s){ return String(s).replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function clearAll(){ 
+    if(confirm("Clear all schools and scores?")) {
+        document.querySelector("#scoreTable tbody").innerHTML="";
+        localStorage.removeItem('scoreboard');
+    }
+}
+
+window.addEventListener('keydown',e=>{if(e.key==='Enter') e.preventDefault();});
+
+function downloadExcel(){
+  const rows=[]; 
+  rows.push(["Rank","School", ...Array.from({length:NUM},(_,i)=>`Act ${i+1}`),"Total"]);
+  const trs=Array.from(document.querySelectorAll("#scoreTable tbody tr"));
+  trs.forEach(tr=>{
+    const rank=tr.querySelector('.rank-cell').textContent.trim();
+    const school=tr.querySelector('input[type="text"]').value.trim();
+    const nums=Array.from(tr.querySelectorAll('input[type="number"]')).map(i=>Number(i.value)||0);
+    const total=Number(tr.querySelector('.total').textContent)||0;
+    rows.push([rank,school,...nums,total]);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Scores");
+  XLSX.writeFile(wb,`scoreboard_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'_')}.xlsx`);
+}
+
+async function downloadPDF(){
+  const tableWrap=document.querySelector(".container");
+  const canvas=await html2canvas(tableWrap,{scale:2,backgroundColor:getComputedStyle(document.body).backgroundColor});
+  const imgData=canvas.toDataURL('image/png');
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF('l','pt','a4');
+  const pdfWidth=pdf.internal.pageSize.getWidth();
+  const imgWidth=pdfWidth-40;
+  const imgHeight=(canvas.height*imgWidth)/canvas.width;
+  pdf.addImage(imgData,'PNG',20,20,imgWidth,imgHeight);
+  pdf.save(`scoreboard_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'_')}.pdf`);
+}
+
+let isProjector=false;
+function toggleProjector(){
+  const body=document.body;
+  if(!isProjector){
+    if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+    body.classList.add('projector-mode'); isProjector=true;
+  }else{
+    if(document.exitFullscreen) document.exitFullscreen();
+    body.classList.remove('projector-mode'); isProjector=false;
+  }
+}
+
+function showWinner(){
+    const tbody=document.querySelector("#scoreTable tbody");
+    const rows=Array.from(tbody.querySelectorAll('tr'));
+    if(rows.length===0) return alert("No schools available!");
+    let maxTotal = Math.max(...rows.map(r=>Number(r.querySelector('.total').textContent)));
+    let winners = rows.filter(r=>Number(r.querySelector('.total').textContent)===maxTotal);
+    if(winners.length===0) return;
+
+    rows.forEach(r=>r.classList.remove('highlight'));
+    winners.forEach(r=>r.classList.add('highlight'));
+
+    const popup = document.getElementById('winnerPopup');
+    popup.style.display='block';
+    popup.innerHTML = winners.map(r=>r.querySelector('input[type="text"]').value).join('\n🏆\n');
+    popup.style.animation = 'popUp 0.6s forwards';
+
+    popup.animate([
+        { boxShadow: '0 0 30px #00eaff,0 0 50px #ff00ff,0 0 70px #00ff00' },
+        { boxShadow: '0 0 60px #00eaff,0 0 100px #ff00ff,0 0 140px #00ff00' },
+        { boxShadow: '0 0 30px #00eaff,0 0 50px #ff00ff,0 0 70px #00ff00' }
+    ], { duration:1500, iterations:Infinity });
+
+    popup.onclick = () => popup.style.display = 'none';
+}
+
+if(savedData.length>0){
+    savedData.forEach(s=>addSchool(s.school, s.scores));
+}
+</script>
+
+</body>
+</html>
