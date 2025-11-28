@@ -93,7 +93,6 @@ table { width:100%; border-collapse: collapse; background: rgba(255,255,255,0.03
 th, td { padding:6px 8px; border-bottom:1px solid rgba(255,255,255,0.1); text-align:center; vertical-align:middle; font-size:16px; }
 th { background: rgba(0,230,255,0.1); color:#00eaff; }
 
-/* White block for school name */
 .school-cell {
     max-width: 300px;
     min-width: 180px;
@@ -109,9 +108,6 @@ th { background: rgba(0,230,255,0.1); color:#00eaff; }
 }
 
 .total { font-weight:800; font-size:20px; }
-
-.projector-mode { background:#000810; transform-origin: top left; }
-.projector-mode table th, .projector-mode table td { font-size:18px; padding:8px 10px; }
 
 .gold { animation: glowGold 1.5s infinite alternate; }
 .silver { animation: glowSilver 1.5s infinite alternate; }
@@ -155,7 +151,6 @@ th { background: rgba(0,230,255,0.1); color:#00eaff; }
   <div id="controlMenu">
     <button class="primary" onclick="menuAction(downloadExcel)">Download Excel</button>
     <button class="muted" onclick="menuAction(downloadPDF)">Download PDF</button>
-    <button class="primary" onclick="menuAction(toggleProjector)">Projector Mode</button>
     <button class="primary" onclick="menuAction(showWinner)">🏆 Winners</button>
   </div>
 </div>
@@ -180,11 +175,11 @@ th { background: rgba(0,230,255,0.1); color:#00eaff; }
 <tbody></tbody>
 </table>
 </div>
+
 <div id="winnerPopup" style="display:none;"></div>
 
 <script>
-const NUM=9;
-let isProjector=false;
+const NUM = 9;
 
 // Load Firebase data
 function loadFromFirebase(){
@@ -214,7 +209,7 @@ function addSchoolRow(name="", scores=[], id=null){
     tbody.appendChild(tr);
 }
 
-// Sort table & apply gold/silver/bronze
+// Sort rows
 function sortAndHighlight(){
     const tbody = document.querySelector("#scoreTable tbody");
     const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -229,10 +224,16 @@ function sortAndHighlight(){
 }
 
 // Menu functions
-function toggleControls(){ const menu=document.getElementById('controlMenu'); menu.style.display = (menu.style.display==='none')?'block':'none'; }
-function menuAction(fn){ fn(); document.getElementById('controlMenu').style.display='none'; }
+function toggleControls(){
+    const menu=document.getElementById('controlMenu');
+    menu.style.display = (menu.style.display==='none')?'block':'none';
+}
+function menuAction(fn){
+    fn();
+    document.getElementById('controlMenu').style.display='none';
+}
 
-// Adjust table scale
+// Adjust table scaling
 function adjustTableScale(){
     const container = document.querySelector('.container');
     const table = document.getElementById('scoreTable');
@@ -243,7 +244,7 @@ function adjustTableScale(){
 }
 window.addEventListener('resize', adjustTableScale);
 
-// PDF/Excel
+// PDF & Excel export
 async function downloadPDF(){ 
     const tableWrap=document.querySelector(".container");
     const canvas=await html2canvas(tableWrap,{scale:2,backgroundColor:getComputedStyle(document.body).backgroundColor});
@@ -266,23 +267,6 @@ function downloadExcel(){
     XLSX.writeFile(wb,`scoreboard_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'_')}.xlsx`);
 }
 
-// Projector mode
-function toggleProjector(){
-    const body=document.body;
-    const container=document.querySelector('.container');
-    if(!isProjector){
-        if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
-        body.classList.add('projector-mode');
-        adjustTableScale();
-        isProjector=true;
-    } else {
-        if(document.exitFullscreen) document.exitFullscreen();
-        body.classList.remove('projector-mode');
-        container.style.transform = `scale(1)`;
-        isProjector=false;
-    }
-}
-
 // Winner popup
 function showWinner(){
     const tbody=document.querySelector("#scoreTable tbody");
@@ -291,22 +275,16 @@ function showWinner(){
     let maxTotal = Math.max(...rows.map(r=>Number(r.querySelector('.total').textContent)));
     let winners = rows.filter(r=>Number(r.querySelector('.total').textContent)===maxTotal);
     if(winners.length===0) return;
-    rows.forEach(r=>r.classList.remove('highlight'));
-    winners.forEach(r=>r.classList.add('highlight'));
     const popup = document.getElementById('winnerPopup');
     popup.style.display='block';
     popup.innerHTML = winners.map(r=>r.querySelector('td').textContent).join('\n🏆\n');
     popup.style.animation = 'popUp 0.6s forwards';
-    setTimeout(()=>{ popup.style.display='none'; },10000); // 10 seconds only
+    setTimeout(()=>{ popup.style.display='none'; },10000);
 }
 
-// Load Firebase initially
+// Initialize
 loadFromFirebase();
 </script>
+
 </body>
 </html>
-
-
-
-
-
